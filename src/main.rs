@@ -14,4 +14,15 @@ struct Vault {
     password: String,
 }
 
+impl Vault {
+    fn new(id: usize, service: String, username: String, password: String) -> Self {
+        Self {
+            id,
+            service,
+            username,
+            password,
+        }
+    }
+}
+
 fn main() {}
