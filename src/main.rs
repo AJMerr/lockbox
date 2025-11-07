@@ -86,4 +86,11 @@ enum Commands {
     },
 }
 
-fn main() {}
+fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+    let db_path = cli.db.unwrap_or_else(|| PathBuf::from("db.json"));
+
+    let mut store = Store::load(&db_path);
+
+    Ok(())
+}
