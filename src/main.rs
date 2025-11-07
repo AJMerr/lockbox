@@ -87,6 +87,7 @@ enum Commands {
     Remove {
         id: usize,
     },
+    List,
 }
 
 fn main() -> anyhow::Result<()> {
