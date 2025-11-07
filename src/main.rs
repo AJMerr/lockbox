@@ -106,7 +106,7 @@ fn main() -> anyhow::Result<()> {
             let pushed = store.vault_items.last().expect("Just pushed");
             println!(
                 "
-            Added the following\nID: {}\nService: {}\nUsername: {}\nPassword: {}
+            Added the following:\nID: {}\nService: {}\nUsername: {}\nPassword: {}
                 ",
                 pushed.id, pushed.service, pushed.username, pushed.password
             );
