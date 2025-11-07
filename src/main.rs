@@ -92,5 +92,27 @@ fn main() -> anyhow::Result<()> {
 
     let mut store = Store::load(&db_path);
 
+    match cli.command {
+        Commands::Add {
+            service,
+            username,
+            password,
+        } => {
+            let id = store.next_id;
+            store.next_id += 1;
+            store
+                .vault_items
+                .push(Vault::new(id, service, username, password));
+            let pushed = store.vault_items.last().expect("Just pushed");
+            println!(
+                "
+            Added the following\nID: {}\nService: {}\nUsername: {}\nPassword: {}
+                ",
+                pushed.id, pushed.service, pushed.username, pushed.password
+            );
+            store.save(&db_path)?;
+        }
+    }
+
     Ok(())
 }
