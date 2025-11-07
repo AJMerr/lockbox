@@ -68,4 +68,22 @@ impl Store {
     }
 }
 
+#[derive(Debug, Parser)]
+#[command(name = "locbox", version, about = "Lightweight CLI password manager.")]
+struct Cli {
+    db: Option<PathBuf>,
+
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    Add {
+        service: String,
+        username: String,
+        password: String,
+    },
+}
+
 fn main() {}
