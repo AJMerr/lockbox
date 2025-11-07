@@ -84,6 +84,9 @@ enum Commands {
         username: String,
         password: String,
     },
+    Remove {
+        id: usize,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
