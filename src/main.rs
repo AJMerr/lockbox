@@ -115,6 +115,15 @@ fn main() -> anyhow::Result<()> {
             );
             store.save(&db_path)?;
         }
+        Commands::Remove { id } => {
+            if let Some(pos) = store.vault_items.iter().position(|v| v.id == id) {
+                store.vault_items.remove(pos);
+                store.save(&db_path)?;
+                println!("Removed Service with ID: {id}");
+            } else {
+                println!("Unable to find service with the ID: {id}");
+            }
+        }
     }
 
     Ok(())
