@@ -125,6 +125,11 @@ fn main() -> anyhow::Result<()> {
                 println!("Unable to find service with the ID: {id}");
             }
         }
+        Commands::List => {
+            for i in &store.vault_items {
+                println!("{} | {} | {} | {}", i.id, i.service, i.username, i.password);
+            }
+        }
     }
 
     Ok(())
