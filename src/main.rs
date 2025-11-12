@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use orion::kdf::{self, Password, Salt};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{self, File},
@@ -74,6 +75,18 @@ struct EncryptedFile {
     kdf_iterations: u32,
     kdf_memory_kib: u32,
     blob_b64: String,
+}
+
+fn derive_aead_key(
+    master: &str,
+    salt: &Salt,
+    iters: u32,
+    memory_kib: u32,
+) -> anyhow::Result<orion::aead::SecretKey> {
+    let password = Password::from_slice(master.as_bytes())?;
+    let dk = kdf::derive_key(&password, salt, iters, memory_kib, 32)?;
+    let key = orion::aead::SecretKey::from_slice(dk.unprotected_as_bytes())?;
+    Ok(key)
 }
 
 #[derive(Debug, Parser)]
