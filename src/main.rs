@@ -11,6 +11,7 @@ use std::{
     io::{BufReader, Write},
     path::PathBuf,
 };
+use zeroize::Zeroize;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Vault {
@@ -186,12 +187,7 @@ fn main() -> anyhow::Result<()> {
                 .vault_items
                 .push(Vault::new(id, service, username, password));
             let pushed = store.vault_items.last().expect("Just pushed");
-            println!(
-                "
-            Added the following:\nID: {}\nService: {}\nUsername: {}\nPassword: {}
-                ",
-                pushed.id, pushed.service, pushed.username, pushed.password
-            );
+            println!("Added Entry with ID: {}", pushed.id);
             store.save(&db_path, &master)?;
         }
         Commands::Remove { id } => {
@@ -210,5 +206,6 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
+    master.zeroize();
     Ok(())
 }
