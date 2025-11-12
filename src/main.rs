@@ -1,4 +1,9 @@
+use anyhow::Context;
+use base64::Engine;
+use base64::engine::general_purpose;
 use clap::{Parser, Subcommand};
+use orion::aead;
+use orion::hazardous::kdf::argon2i::derive_key;
 use orion::kdf::{self, Password, Salt};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -87,6 +92,27 @@ fn derive_aead_key(
     let dk = kdf::derive_key(&password, salt, iters, memory_kib, 32)?;
     let key = orion::aead::SecretKey::from_slice(dk.unprotected_as_bytes())?;
     Ok(key)
+}
+
+fn encrypt_store(store: &Store, master: &str) -> anyhow::Result<EncryptedFile> {
+    let salt = Salt::default();
+    let iters = 3;
+    let memory_kib = 1 << 16;
+
+    let password = Password::from_slice(master.as_bytes())?;
+    let dk = kdf::derive_key(&password, &salt, iters, memory_kib, 32)?;
+    let key = orion::aead::SecretKey::from_slice(dk.unprotected_as_bytes())?;
+
+    let plaintext = serde_json::to_vec(store).context("serialize_store")?;
+
+    let blob = aead::seal(&key, &plaintext).context("encryption_failed")?;
+
+    Ok(EncryptedFile {
+        salt_b64: general_purpose::STANDARD.encode(salt.as_ref()),
+        kdf_iterations: iters,
+        kdf_memory_kib: memory_kib,
+        blob_b64: general_purpose::STANDARD.encode(&blob),
+    })
 }
 
 #[derive(Debug, Parser)]
