@@ -5,6 +5,7 @@ use clap::{Parser, Subcommand};
 use orion::aead;
 use orion::hazardous::kdf::argon2i::derive_key;
 use orion::kdf::{self, Password, Salt};
+use rpassword::prompt_password;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{self, File},
@@ -38,7 +39,7 @@ struct Store {
 }
 
 impl Store {
-    fn load(path: &PathBuf) -> Self {
+    fn load(path: &PathBuf, master: &str) -> Self {
         if !path.exists() {
             return Store {
                 next_id: 1,
@@ -55,14 +56,30 @@ impl Store {
             }
         };
         let reader = BufReader::new(file);
-        serde_json::from_reader(reader).unwrap_or_else(|_| Store {
-            next_id: 1,
-            vault_items: vec![],
-        })
+        match serde_json::from_reader::<_, EncryptedFile>(reader) {
+            Ok(enc) => decrypt_store(&enc, master).unwrap_or_else(|e| {
+                eprintln!("{e}");
+                Store {
+                    next_id: 1,
+                    vault_items: vec![],
+                }
+            }),
+            Err(_) => {
+                let file = File::open(&path).ok()?;
+                let reader = BufReader::new(file);
+                serde_json::from_reader(reader).unwrap_or(Store {
+                    next_id: 1,
+                    vault_items: vec![],
+                })
+            }
+        }
     }
 
-    fn save(&self, path: &PathBuf) -> std::io::Result<()> {
-        let json = serde_json::to_vec_pretty(self).expect("serialize_error");
+    fn save(&self, path: &PathBuf, master: &str) -> std::io::Result<()> {
+        let enc = encrypt_store(self, master)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let json = serde_json::to_vec_pretty(&enc).expect("serialize_error");
+
         let tmp = path.with_extension("json.tmp");
         {
             let mut f = File::create(&tmp)?;
@@ -159,7 +176,8 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     let db_path = cli.db.unwrap_or_else(|| PathBuf::from("db.json"));
 
-    let mut store = Store::load(&db_path);
+    let mut master = prompt_password("Master password: ")?;
+    let mut store = Store::load(&db_path, &master);
 
     match cli.command {
         Commands::Add {
@@ -179,12 +197,12 @@ fn main() -> anyhow::Result<()> {
                 ",
                 pushed.id, pushed.service, pushed.username, pushed.password
             );
-            store.save(&db_path)?;
+            store.save(&db_path, &master)?;
         }
         Commands::Remove { id } => {
             if let Some(pos) = store.vault_items.iter().position(|v| v.id == id) {
                 store.vault_items.remove(pos);
-                store.save(&db_path)?;
+                store.save(&db_path, &master)?;
                 println!("Removed Service with ID: {id}");
             } else {
                 println!("Unable to find service with the ID: {id}");
