@@ -3,7 +3,6 @@ use base64::Engine;
 use base64::engine::general_purpose;
 use clap::{Parser, Subcommand};
 use orion::aead;
-use orion::hazardous::kdf::argon2i::derive_key;
 use orion::kdf::{self, Password, Salt};
 use rpassword::prompt_password;
 use serde::{Deserialize, Serialize};
@@ -65,7 +64,15 @@ impl Store {
                 }
             }),
             Err(_) => {
-                let file = File::open(&path).ok()?;
+                let file = match File::open(path) {
+                    Ok(f) => f,
+                    Err(_) => {
+                        return Store {
+                            next_id: 1,
+                            vault_items: vec![],
+                        };
+                    }
+                };
                 let reader = BufReader::new(file);
                 serde_json::from_reader(reader).unwrap_or(Store {
                     next_id: 1,
@@ -97,18 +104,6 @@ struct EncryptedFile {
     kdf_iterations: u32,
     kdf_memory_kib: u32,
     blob_b64: String,
-}
-
-fn derive_aead_key(
-    master: &str,
-    salt: &Salt,
-    iters: u32,
-    memory_kib: u32,
-) -> anyhow::Result<orion::aead::SecretKey> {
-    let password = Password::from_slice(master.as_bytes())?;
-    let dk = kdf::derive_key(&password, salt, iters, memory_kib, 32)?;
-    let key = orion::aead::SecretKey::from_slice(dk.unprotected_as_bytes())?;
-    Ok(key)
 }
 
 fn encrypt_store(store: &Store, master: &str) -> anyhow::Result<EncryptedFile> {
