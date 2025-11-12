@@ -115,6 +115,24 @@ fn encrypt_store(store: &Store, master: &str) -> anyhow::Result<EncryptedFile> {
     })
 }
 
+fn decrypt_store(enc: &EncryptedFile, master: &str) -> anyhow::Result<Store> {
+    let salt_bytes = general_purpose::STANDARD
+        .decode(&enc.salt_b64)
+        .context("decoded_salt")?;
+    let salt = Salt::from_slice(&salt_bytes)?;
+    let blob = general_purpose::STANDARD
+        .decode(&enc.blob_b64)
+        .context("decode_blob")?;
+
+    let password = Password::from_slice(master.as_bytes())?;
+    let dk = kdf::derive_key(&password, &salt, enc.kdf_iterations, enc.kdf_memory_kib, 32)?;
+    let key = orion::aead::SecretKey::from_slice(dk.unprotected_as_bytes())?;
+
+    let plaintext = aead::open(&key, &blob).context("decryption_failed")?;
+
+    Ok(serde_json::from_slice(&plaintext).context("deserialize error")?)
+}
+
 #[derive(Debug, Parser)]
 #[command(name = "locbox", version, about = "Lightweight CLI password manager.")]
 struct Cli {
