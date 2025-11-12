@@ -68,6 +68,14 @@ impl Store {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct EncryptedFile {
+    salt_b64: String,
+    kdf_iterations: u32,
+    kdf_memory_kib: u32,
+    blob_b64: String,
+}
+
 #[derive(Debug, Parser)]
 #[command(name = "locbox", version, about = "Lightweight CLI password manager.")]
 struct Cli {
